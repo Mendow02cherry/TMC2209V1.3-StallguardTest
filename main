@@ -1,0 +1,267 @@
+/*
+  StallGuard4Test: Teensy 4.1 + TMC2209v1.3 BIGTREETECH
+
+  needed library (Arduino IDE -> library administration):
+    "TMCStepper" von teemuatlut
+
+    Teensy pin 2  -> STEP
+    Teensy pin 3  -> DIR
+    Teensy pin 4  -> EN      (LOW = activ)
+    Teensy pin 5  <- DIAG    (HIGH = stall detected)
+    Teensy pin 8  (TX2) -> 1 kOhm -> RX
+    Teensy pin 7  (RX2) <- TX
+    MS1, MS2 -> GND          (UART-address 0)
+
+  serial monitor (115200 Baud"):
+    g        motor start (with startup ramp)
+    x        motor stop and driver off
+    v<number>  motorspeed in revolution/s,   try v2.5
+    s<number>  SGTHRS 0..255 (higher value = higher sensitivity), try  <60
+    i<number>  motorcurrent mA (RMS),              z.B. i800
+    d        change direction
+    h        help
+
+ 
+  a report begins with '#'.
+*/
+
+#include <TMCStepper.h>
+
+// pins
+constexpr uint8_t PIN_STEP = 2;
+constexpr uint8_t PIN_DIR = 3;
+constexpr uint8_t PIN_EN = 4;
+constexpr uint8_t PIN_DIAG = 5;
+
+// driver
+#define DRIVER_SERIAL Serial2          // Teensy 4.1: RX2 = Pin 7, TX2 = Pin 8
+constexpr float R_SENSE = 0.11f;       // BTT TMC2209 v1.3: 0,11 Ohm Shunt
+constexpr uint8_t DRIVER_ADDR = 0b00;  // MS1 = MS2 = GND
+constexpr uint16_t MICROSTEPS = 16;
+constexpr uint16_t FULLSTEPS_PER_REV = 200;  // 1,8°-Motor
+
+TMC2209Stepper driver(&DRIVER_SERIAL, R_SENSE, DRIVER_ADDR);
+IntervalTimer stepTimer;
+
+// settings (changeable while running)
+uint16_t motorCurrent_mA = 800;  // motor current
+uint8_t sgThreshold = 60;        // stall when SG_RESULT <= 2 * sgThreshold
+float speedRevPerSec = 2.0f;
+bool dirForward = true;
+
+// ramp / state
+constexpr uint32_t START_SPS = 400;      // start-steps/s
+constexpr uint32_t RAMP_STEP_SPS = 100;  // increase each rampstep
+constexpr uint32_t RAMP_INTERVAL_MS = 10;
+constexpr uint32_t ARM_DELAY_MS = 500;  // delay after ramp until stall-detection goes activ
+
+enum State { STOPPED,
+             RAMPING,
+             RUNNING,
+             STALLED };
+State state = STOPPED;
+uint32_t currentSps = 0;
+uint32_t lastRampMs = 0;
+uint32_t rampDoneMs = 0;
+
+volatile bool stepLevel = false;
+volatile bool stallFlag = false;
+
+// interrupts
+void stepISR() {  // runs with 2x frequency
+  stepLevel = !stepLevel;
+  digitalWriteFast(PIN_STEP, stepLevel);
+}
+
+void diagISR() {
+  stallFlag = true;
+}
+
+uint32_t targetSps() {
+  return (uint32_t)(speedRevPerSec * FULLSTEPS_PER_REV * MICROSTEPS);
+}
+
+float halfPeriodUs(uint32_t sps) {
+  return 500000.0f / (float)sps;
+}
+
+void startStepping(uint32_t sps) {
+  currentSps = sps;
+  stepTimer.begin(stepISR, halfPeriodUs(sps));
+}
+
+void stopStepping() {
+  stepTimer.end();
+  stepLevel = false;
+  digitalWriteFast(PIN_STEP, LOW);
+}
+
+void startMotor() {
+  digitalWrite(PIN_DIR, dirForward ? HIGH : LOW);
+  digitalWrite(PIN_EN, LOW);  // activate driver
+  delay(10);
+  stallFlag = false;
+  state = RAMPING;
+  lastRampMs = millis();
+  startStepping(min(START_SPS, targetSps()));
+  Serial.println("# motor starting");
+}
+
+void stopMotor(bool disableDriver) {
+  stopStepping();
+  state = STOPPED;
+  if (disableDriver) digitalWrite(PIN_EN, HIGH);
+}
+
+void applyDriverSettings() {
+  driver.rms_current(motorCurrent_mA);
+  driver.SGTHRS(sgThreshold);
+}
+
+void printHelp() {
+  Serial.println("# options: g=start motor x=stop motor  v<rev/s>  s<SGTHRS 0-255>  i<mA>  d=direction  h=help");
+}
+
+// setup
+void setup() {
+  Serial.begin(115200);
+  uint32_t t0 = millis();
+  while (!Serial && millis() - t0 < 3000) {}
+
+  pinMode(PIN_STEP, OUTPUT);
+  pinMode(PIN_DIR, OUTPUT);
+  pinMode(PIN_EN, OUTPUT);
+  pinMode(PIN_DIAG, INPUT);    // DIAG pin is input only
+  digitalWrite(PIN_EN, HIGH);  
+
+  DRIVER_SERIAL.begin(115200);
+  driver.begin();
+
+  // needed for UART
+  driver.pdn_disable(true);       // PDN_UART pin only as UART
+  driver.I_scale_analog(false);   // current over UART instead of Vref-Pot.
+  driver.mstep_reg_select(true);  // microstepps over register instead MS1/MS2
+  driver.toff(5);                 // activate turn-off-time
+  driver.microsteps(MICROSTEPS);
+  driver.rms_current(motorCurrent_mA);
+
+  // StallGuard4 needs StealthChop
+  driver.en_spreadCycle(false);  // StealthChop on
+  driver.pwm_autoscale(true);
+  driver.TPWMTHRS(0);         // StealthChop at every PWM (motorspeed)
+  driver.TCOOLTHRS(0xFFFFF);  // StallGuard/DIAG activ at low motorspeed
+  driver.SGTHRS(sgThreshold);
+
+  // check connection
+  uint8_t conn = driver.test_connection();
+  if (conn == 0) {
+    Serial.print("# TMC2209 OK, IC-Version 0x");
+    Serial.println(driver.version(), HEX);  // expect: 0x21
+  } else {
+    Serial.print("# ERROR: no UART-Connection to TMC2209 (Code ");
+    Serial.print(conn);
+    Serial.println("). wiring, test 1k-resistor and VM-Supply");
+  }
+
+  attachInterrupt(digitalPinToInterrupt(PIN_DIAG), diagISR, RISING);
+  printHelp();
+}
+
+// commands
+void handleSerial() {
+  if (!Serial.available()) return;
+  Serial.setTimeout(20);
+  String line = Serial.readStringUntil('\n');
+  line.trim();
+  if (line.length() == 0) return;
+
+  char cmd = line.charAt(0);
+  float val = line.substring(1).toFloat();
+
+  switch (cmd) {
+    case 'g':
+      if (state == STOPPED || state == STALLED) startMotor();
+      break;
+    case 'x':
+      stopMotor(true);
+      Serial.println("# motor stopped, driver off");
+      break;
+    case 'v':
+      speedRevPerSec = constrain(val, 0.2f, 10.0f);
+      Serial.print("# motorspeed [rev/s]: ");
+      Serial.println(speedRevPerSec);
+      if (state == RUNNING) {
+        state = RAMPING;
+        lastRampMs = millis();
+      }
+      break;
+    case 's':
+      sgThreshold = (uint8_t)constrain((int)val, 0, 255);
+      driver.SGTHRS(sgThreshold);
+      Serial.print("# SGTHRS: ");
+      Serial.print(sgThreshold);
+      Serial.print(" -> stall at SG_RESULT <= ");
+      Serial.println(sgThreshold * 2);
+      break;
+    case 'i':
+      motorCurrent_mA = (uint16_t)constrain((int)val, 100, 1500);
+      driver.rms_current(motorCurrent_mA);
+      Serial.print("# current [mA RMS]: ");
+      Serial.println(motorCurrent_mA);
+      break;
+    case 'd':
+      dirForward = !dirForward;
+      digitalWrite(PIN_DIR, dirForward ? HIGH : LOW);
+      Serial.println(dirForward ? "# direction: forward" : "# direction: backward");
+      break;
+    case 'h': printHelp(); break;
+    default: Serial.println("# unknown command"); printHelp();
+  }
+}
+
+// main loop
+void loop() {
+  handleSerial();
+  uint32_t now = millis();
+
+  // ramp
+  if (state == RAMPING && now - lastRampMs >= RAMP_INTERVAL_MS) {
+    lastRampMs = now;
+    uint32_t target = targetSps();
+    if (currentSps < target) currentSps = min(currentSps + RAMP_STEP_SPS, target);
+    else if (currentSps > target) currentSps = max(currentSps - RAMP_STEP_SPS, target);
+    stepTimer.update(halfPeriodUs(currentSps));
+    if (currentSps == target) {
+      state = RUNNING;
+      rampDoneMs = now;
+      stallFlag = false;  // remove flags out of the ramp
+    }
+  }
+
+  // stall evaluation (after ramp + delay, else false stall while startup)
+  if (state == RUNNING && now - rampDoneMs > ARM_DELAY_MS && stallFlag) {
+    stopMotor(false);  // motor stays powered (holding torque)
+    state = STALLED;
+    Serial.println("# >>> STALL detected (DIAG) - motor stopped. 'g' to start motor");
+  }
+
+  // output values at 20 Hz - format for SerialPlotter
+  static uint32_t lastPrint = 0;
+  if (millis() - lastPrint >= 200) {
+    lastPrint = millis();
+
+    uint32_t tstep = driver.TSTEP();  // microsteptime, while moving > 0
+    uint16_t sg = driver.SG_RESULT();
+    bool crc = driver.CRCerror;      // true = last reading faulty
+    uint8_t ver = driver.version();  // should always be 0x21 
+
+    Serial.print("TSTEP:");
+    Serial.print(tstep);
+    Serial.print(" SG:");
+    Serial.print(sg);
+    Serial.print(" CRCerr:");
+    Serial.print(crc);
+    Serial.print(" VER:0x");
+    Serial.println(ver, HEX);
+  }
+}
