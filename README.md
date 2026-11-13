@@ -1,5 +1,5 @@
 Controller: Teensy4.1 (should work on Arduino)
-Driver: TMC2209 V1.3 by BIGTREETECH
+Driver: TMC2209 v1.3 by BIGTREETECH
 
 
 -see pins in code
