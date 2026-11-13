@@ -4,5 +4,5 @@ Driver: TMC2209 v1.3 by BIGTREETECH
 
 -see pins in code
 
--reading StallGuardValue is not working yet
+-reading StallGuard4Value is not working yet
 
