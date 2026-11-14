@@ -17,7 +17,7 @@
     x        motor stop and driver off
     v<number>  motorspeed in revolution/s,   try v2.5
     s<number>  SGTHRS 0..255 (higher value = higher sensitivity), try  <60
-    i<number>  motorcurrent mA (RMS),              z.B. i800
+    i<number>  motorcurrent mA (RMS),              z.B. i600 (refer to your motors datasheet)
     d        change direction
     h        help
 
@@ -44,14 +44,14 @@ TMC2209Stepper driver(&DRIVER_SERIAL, R_SENSE, DRIVER_ADDR);
 IntervalTimer stepTimer;
 
 // settings (changeable while running)
-uint16_t motorCurrent_mA = 800;  // motor current
+uint16_t motorCurrent_mA = 600;  // motor current
 uint8_t sgThreshold = 60;        // stall when SG_RESULT <= 2 * sgThreshold
 float speedRevPerSec = 2.0f;
 bool dirForward = true;
 
-// ramp / state
+// ramp/state
 constexpr uint32_t START_SPS = 400;      // start-steps/s
-constexpr uint32_t RAMP_STEP_SPS = 100;  // increase each rampstep
+constexpr uint32_t RAMP_STEP_SPS = 50;  // increase each rampstep
 constexpr uint32_t RAMP_INTERVAL_MS = 10;
 constexpr uint32_t ARM_DELAY_MS = 500;  // delay after ramp until stall-detection goes activ
 
