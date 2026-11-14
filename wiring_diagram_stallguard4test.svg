@@ -1,0 +1,144 @@
+<svg viewBox="0 0 1100 680" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1100" height="680" fill="#ffffff"/>
+  <text x="550" y="40" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2937">Wiring: Teensy 4.1 – TMC2209 (BTT v1.3, separate RX/TX) – NEMA 17</text>
+
+  <!-- ================= Teensy ================= -->
+  <rect x="40" y="110" width="220" height="480" rx="8" fill="#eef2ff" stroke="#4338ca" stroke-width="2"/>
+  <text x="150" y="140" text-anchor="middle" font-size="18" font-weight="700" fill="#312e81">Teensy 4.1</text>
+  <g font-size="14" fill="#1f2937" text-anchor="end">
+    <text x="248" y="175">3V3</text>
+    <text x="248" y="225">GND</text>
+    <text x="248" y="275">Pin 2</text>
+    <text x="248" y="325">Pin 3</text>
+    <text x="248" y="375">Pin 4</text>
+    <text x="248" y="425">Pin 5</text>
+    <text x="248" y="475">Pin 8 (TX2)</text>
+    <text x="248" y="525">Pin 7 (RX2)</text>
+  </g>
+
+  <!-- ================= TMC2209 ================= -->
+  <rect x="560" y="110" width="220" height="540" rx="8" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+  <text x="670" y="140" text-anchor="middle" font-size="18" font-weight="700" fill="#064e3b">TMC2209 (BTT v1.3)</text>
+  <g font-size="14" fill="#1f2937">
+    <text x="572" y="175">VIO</text>
+    <text x="572" y="225">GND (logic)</text>
+    <text x="572" y="275">STEP</text>
+    <text x="572" y="325">DIR</text>
+    <text x="572" y="375">EN</text>
+    <text x="572" y="425">DIAG</text>
+    <text x="572" y="475" font-weight="700" fill="#0e7490">RX</text>
+    <text x="572" y="525" font-weight="700" fill="#be185d">TX</text>
+    <text x="572" y="575">MS1</text>
+    <text x="572" y="615">MS2</text>
+  </g>
+  <g font-size="14" fill="#1f2937" text-anchor="end">
+    <text x="768" y="175">VM</text>
+    <text x="768" y="225">GND (motor)</text>
+    <text x="768" y="305">2B</text>
+    <text x="768" y="345">2A</text>
+    <text x="768" y="385">1A</text>
+    <text x="768" y="425">1B</text>
+  </g>
+
+  <!-- ================= Wires Teensy <-> TMC ================= -->
+  <g stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="260" y1="170" x2="560" y2="170" stroke="#dc2626"/>
+    <line x1="260" y1="220" x2="560" y2="220" stroke="#111827"/>
+    <line x1="260" y1="270" x2="560" y2="270" stroke="#2563eb"/>
+    <line x1="260" y1="320" x2="560" y2="320" stroke="#16a34a"/>
+    <line x1="260" y1="370" x2="560" y2="370" stroke="#ea580c"/>
+    <line x1="560" y1="420" x2="260" y2="420" stroke="#9333ea"/>
+    <!-- UART transmit: Teensy TX (Pin 8) -> 1k -> driver RX -->
+    <line x1="260" y1="470" x2="310" y2="470" stroke="#0891b2"/>
+    <line x1="390" y1="470" x2="560" y2="470" stroke="#0891b2"/>
+    <!-- UART receive: driver TX -> Teensy RX (Pin 7), direct -->
+    <line x1="560" y1="520" x2="260" y2="520" stroke="#be185d"/>
+    <!-- MS1/MS2 to GND -->
+    <polyline points="560,570 500,570 500,630" stroke="#111827"/>
+    <line x1="560" y1="610" x2="500" y2="610" stroke="#111827"/>
+  </g>
+  <!-- Arrowheads -->
+  <polygon points="260,420 276,413 276,427" fill="#9333ea"/>
+  <polygon points="260,520 276,513 276,527" fill="#be185d"/>
+  <polygon points="560,470 544,463 544,477" fill="#0891b2"/>
+
+  <!-- 1k resistor (TX line only) -->
+  <rect x="310" y="460" width="80" height="20" fill="#ffffff" stroke="#0891b2" stroke-width="3"/>
+  <text x="350" y="452" text-anchor="middle" font-size="14" font-weight="700" fill="#0e7490">1 kΩ</text>
+
+  <!-- GND symbol MS1/MS2 -->
+  <circle cx="500" cy="610" r="5" fill="#111827"/>
+  <g stroke="#111827" stroke-width="3">
+    <line x1="484" y1="630" x2="516" y2="630"/>
+    <line x1="490" y1="638" x2="510" y2="638"/>
+    <line x1="496" y1="646" x2="504" y2="646"/>
+  </g>
+  <text x="488" y="596" text-anchor="end" font-size="13" fill="#374151">MS1 + MS2 to GND</text>
+  <text x="488" y="612" text-anchor="end" font-size="13" fill="#374151">(UART address 0)</text>
+
+  <!-- Wire labels -->
+  <g font-size="13" text-anchor="middle" fill="#374151">
+    <text x="410" y="160">3V3 → VIO (3.3 V only!)</text>
+    <text x="410" y="210">GND ↔ GND (logic)</text>
+    <text x="410" y="260">STEP</text>
+    <text x="410" y="310">DIR</text>
+    <text x="410" y="360">EN (LOW = active)</text>
+    <text x="410" y="410">DIAG → StallGuard signal (interrupt)</text>
+    <text x="475" y="462" fill="#0e7490">Pin 8 → RX (transmit)</text>
+    <text x="410" y="542" fill="#be185d">TX → Pin 7 (receive, direct, no resistor)</text>
+  </g>
+
+  <!-- Pin dots -->
+  <g fill="#1f2937">
+    <circle cx="260" cy="170" r="4"/><circle cx="260" cy="220" r="4"/><circle cx="260" cy="270" r="4"/>
+    <circle cx="260" cy="320" r="4"/><circle cx="260" cy="370" r="4"/><circle cx="260" cy="420" r="4"/>
+    <circle cx="260" cy="470" r="4"/><circle cx="260" cy="520" r="4"/>
+    <circle cx="560" cy="170" r="4"/><circle cx="560" cy="220" r="4"/><circle cx="560" cy="270" r="4"/>
+    <circle cx="560" cy="320" r="4"/><circle cx="560" cy="370" r="4"/><circle cx="560" cy="420" r="4"/>
+    <circle cx="560" cy="470" r="4"/><circle cx="560" cy="520" r="4"/>
+    <circle cx="560" cy="570" r="4"/><circle cx="560" cy="610" r="4"/>
+    <circle cx="780" cy="170" r="4"/><circle cx="780" cy="220" r="4"/>
+    <circle cx="780" cy="300" r="4"/><circle cx="780" cy="340" r="4"/><circle cx="780" cy="380" r="4"/><circle cx="780" cy="420" r="4"/>
+  </g>
+
+  <!-- ================= Power supply + capacitor ================= -->
+  <rect x="900" y="110" width="160" height="130" rx="8" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+  <text x="980" y="138" text-anchor="middle" font-size="16" font-weight="700" fill="#7f1d1d">Power supply</text>
+  <text x="980" y="158" text-anchor="middle" font-size="13" fill="#7f1d1d">12 – 24 V DC</text>
+  <text x="915" y="178" font-size="14" font-weight="700" fill="#dc2626">+</text>
+  <text x="915" y="228" font-size="14" font-weight="700" fill="#111827">−</text>
+  <g stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="780" y1="170" x2="900" y2="170" stroke="#dc2626"/>
+    <line x1="780" y1="220" x2="900" y2="220" stroke="#111827"/>
+  </g>
+  <circle cx="900" cy="170" r="4" fill="#1f2937"/><circle cx="900" cy="220" r="4" fill="#1f2937"/>
+  <!-- Capacitor -->
+  <g stroke-width="3" fill="none">
+    <line x1="840" y1="170" x2="840" y2="188" stroke="#dc2626"/>
+    <line x1="826" y1="188" x2="854" y2="188" stroke="#1f2937"/>
+    <line x1="826" y1="198" x2="854" y2="198" stroke="#1f2937"/>
+    <line x1="840" y1="198" x2="840" y2="220" stroke="#111827"/>
+  </g>
+  <circle cx="840" cy="170" r="5" fill="#dc2626"/><circle cx="840" cy="220" r="5" fill="#111827"/>
+  <text x="862" y="190" font-size="13" font-weight="700" fill="#374151">100 µF</text>
+  <text x="862" y="206" font-size="12" fill="#374151">≥ 35 V, right</text>
+  <text x="862" y="221" font-size="12" fill="#374151">at VM/GND</text>
+
+  <!-- ================= Motor ================= -->
+  <rect x="900" y="270" width="160" height="180" rx="8" fill="#fffbeb" stroke="#b45309" stroke-width="2"/>
+  <text x="980" y="296" text-anchor="middle" font-size="16" font-weight="700" fill="#78350f">NEMA 17</text>
+  <g stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="780" y1="300" x2="900" y2="300" stroke="#4338ca"/>
+    <line x1="780" y1="340" x2="900" y2="340" stroke="#4338ca"/>
+    <line x1="780" y1="380" x2="900" y2="380" stroke="#b45309"/>
+    <line x1="780" y1="420" x2="900" y2="420" stroke="#b45309"/>
+  </g>
+  <circle cx="900" cy="300" r="4" fill="#1f2937"/><circle cx="900" cy="340" r="4" fill="#1f2937"/>
+  <circle cx="900" cy="380" r="4" fill="#1f2937"/><circle cx="900" cy="420" r="4" fill="#1f2937"/>
+  <text x="915" y="324" font-size="13" fill="#4338ca">Coil B</text>
+  <text x="915" y="404" font-size="13" fill="#b45309">Coil A</text>
+  <text x="915" y="316" font-size="11" fill="#6b7280">(2B / 2A)</text>
+  <text x="915" y="436" font-size="11" fill="#6b7280">(1A / 1B)</text>
+  <text x="840" y="470" text-anchor="middle" font-size="12" fill="#374151">Identify coil pairs with a</text>
+  <text x="840" y="485" text-anchor="middle" font-size="12" fill="#374151">multimeter (≈ 1–3 Ω)</text>
+</svg>
