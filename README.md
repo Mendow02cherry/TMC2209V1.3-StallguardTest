@@ -4,5 +4,8 @@ Driver: TMC2209 v1.3 by BIGTREETECH
 
 -see pins in code
 
--reading StallGuard4Value is not working yet
+-Starrguard detection wroks, but reading the StallGuard value is not working yet
 
+-if anything is not working as expected, try to change the values under "ramp/state" in the code
+
+-if you're having problems causing a proper stall, try change the SGTHRS and motorspeed values, during a testrun
