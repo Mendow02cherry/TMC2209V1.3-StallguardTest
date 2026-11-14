@@ -4,7 +4,7 @@ code: C++
 
 -see pins in code
 
--Starrguard detection wroks, but reading the StallGuard value is not working yet
+-Stallguard detection works, but reading the StallGuard value is not working yet
 
 -if anything is not working as expected, try to change the values under "ramp/state" in the code
 
